@@ -30,6 +30,7 @@ struct VideoSettings {
     int bitRate; // in kbps
     CameraParameters::VIDEO_CODING_FORMAT encoder;
     CameraParameters::VIDEO_FILE_FORMAT fileFormat;
+    std::string pipeline;
 };
 
 class VideoCapture {

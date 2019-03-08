@@ -278,6 +278,14 @@ std::string CameraServer::readImgCapLocation(const ConfFile &conf) const
 
 bool CameraServer::readVidCapSettings(const ConfFile &conf, VideoSettings &vidSetting) const
 {
+    char *pipeline = 0;
+    if (!conf.extract_options("vidcap", "pipeline", &pipeline)) {
+        vidSetting.pipeline = std::string(pipeline);
+        free(pipeline);
+        log_info("Video Capture pipeline=%s", vidSetting.pipeline.c_str());
+        return true;
+    }
+
     int ret = 0;
 
     struct options {
@@ -308,6 +316,8 @@ bool CameraServer::readVidCapSettings(const ConfFile &conf, VideoSettings &vidSe
     vidSetting.bitRate = opt.bitrate;
     vidSetting.encoder = static_cast<CameraParameters::VIDEO_CODING_FORMAT>(opt.encoder);
     vidSetting.fileFormat = static_cast<CameraParameters::VIDEO_FILE_FORMAT>(opt.format);
+    vidSetting.pipeline = {};
+
     log_info("Video Capture Width=%d Height=%d framerate=%d, bitrate=%dkbps, encoder=%d, format=%d",
              vidSetting.width, vidSetting.height, vidSetting.frameRate, vidSetting.bitRate,
              vidSetting.encoder, vidSetting.fileFormat);

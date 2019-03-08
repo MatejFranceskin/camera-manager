@@ -64,5 +64,6 @@ private:
     CameraParameters::VIDEO_CODING_FORMAT mEnc;
     CameraParameters::VIDEO_FILE_FORMAT mFileFmt;
     std::string mFilePath;
+    std::string mPipelineString;
     GstElement *mPipeline;
 };

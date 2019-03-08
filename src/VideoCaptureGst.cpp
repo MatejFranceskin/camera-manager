@@ -15,6 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <iomanip>
+#include <regex>
 #include <sstream>
 
 #include "VideoCaptureGst.h"
@@ -41,6 +43,7 @@ VideoCaptureGst::VideoCaptureGst(std::shared_ptr<CameraDevice> camDev)
     , mEnc(DEFAULT_ENCODER)
     , mFileFmt(DEFAULT_FILE_FORMAT)
     , mFilePath(DEFAULT_FILE_PATH)
+    , mPipelineString({})
     , mPipeline(nullptr)
 {
     log_info("%s Device:%s", __func__, mCamDev->getDeviceId().c_str());
@@ -57,6 +60,7 @@ VideoCaptureGst::VideoCaptureGst(std::shared_ptr<CameraDevice> camDev,
     , mEnc(vidSetting.encoder)
     , mFileFmt(vidSetting.fileFormat)
     , mFilePath(DEFAULT_FILE_PATH)
+    , mPipelineString(vidSetting.pipeline)
     , mPipeline(nullptr)
 
 {
@@ -345,6 +349,15 @@ std::string VideoCaptureGst::getGstV4l2PipelineName()
     std::string device = mCamDev->getDeviceId();
     if (device.empty())
         return {};
+    if (!mPipelineString.empty()) {
+
+        std::stringstream ss;
+        std::time_t t = std::time(nullptr);
+        std::tm tm = *std::localtime(&t);
+        ss << "vid_" << std::put_time(&tm, "%y%m%d_%H%M%S");
+        std::string res = std::regex_replace(mPipelineString, std::regex("\\$FileName"), ss.str());
+        return res;
+    }
 
     device.insert(0, V4L2_DEVICE_PREFIX);
 
