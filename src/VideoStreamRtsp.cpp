@@ -524,6 +524,8 @@ int VideoStreamRtsp::startRtspServer()
         log_error("Error in creating media factory");
         return -1;
     }
+    gst_rtsp_media_factory_set_shared(factory, TRUE);
+    gst_rtsp_media_factory_set_eos_shutdown(factory, TRUE);
 
     g_object_set_data(G_OBJECT(factory), "user_data", this);
     GstRTSPMediaFactoryClass *factory_class = GST_RTSP_MEDIA_FACTORY_GET_CLASS(factory);

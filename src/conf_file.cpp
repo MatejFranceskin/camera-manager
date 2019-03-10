@@ -95,7 +95,7 @@ int ConfFile::parse(const char *filename)
 
     ret = _parse_file((char *)addr, (size_t)fstat.st_size, _files->filename);
     if (ret < 0) {
-        log_error("Conf file parcially parsed. Configuration keys defined before the error were "
+        log_error("Conf file partially parsed. Configuration keys defined before the error were "
                   "included");
         return ret;
     }

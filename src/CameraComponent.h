@@ -65,7 +65,6 @@ public:
     virtual int startImageCapture(int interval, int count, capture_callback_t cb);
     virtual int stopImageCapture();
     void cbImageCaptured(int result, int seq_num);
-    int setVideoCaptureLocation(std::string vidPath);
     int setVideoCaptureSettings(VideoSettings &vidSetting);
     virtual int startVideoCapture(int status_freq);
     virtual int stopVideoCapture();

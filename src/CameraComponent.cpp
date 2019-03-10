@@ -308,12 +308,6 @@ void CameraComponent::cbImageCaptured(int result, int seq_num)
         mImgCapCB(result, seq_num);
 }
 
-int CameraComponent::setVideoCaptureLocation(std::string vidPath)
-{
-    mVidPath = vidPath;
-    return 0;
-}
-
 int CameraComponent::setVideoCaptureSettings(VideoSettings &vidSetting)
 {
     if (mVidSetting)
@@ -321,6 +315,7 @@ int CameraComponent::setVideoCaptureSettings(VideoSettings &vidSetting)
 
     mVidSetting = std::make_shared<VideoSettings>();
     *mVidSetting = vidSetting;
+    mVidPath = vidSetting.vidPath;
 
     return 0;
 }

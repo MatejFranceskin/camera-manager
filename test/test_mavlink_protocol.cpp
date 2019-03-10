@@ -52,6 +52,8 @@ public:
     bool setMode(int camera_id, int mode);
     int getMode(int camera_id);
     void imageCapture(int camera_id, int count, int interval);
+    void videoRecordingStart(int camera_id);
+    void videoRecordingStop(int camera_id);
     std::vector<int> getCameraIdList() const;
     std::string getCameraName(int camera_id) const;
     bool getCameraStream(int camera_id) const;
@@ -74,6 +76,8 @@ private:
     void handleCameraSettingsCB(mavlink_message_t &msg);
     void handleHeartbeatCB(mavlink_message_t &msg);
     void handleAckCB(mavlink_message_t &msg);
+    void handleCameraCaptureStatus(mavlink_message_t &msg);
+    void handleCameraImageCaptured(mavlink_message_t &msg);
     void handleMavlinkMessageCB(mavlink_message_t &msg);
     void messageReceivedCB();
 };
@@ -191,6 +195,24 @@ void Drone::imageCapture(int camera_id, int count, int interval)
     sendCameraMsg(out_msg);
 }
 
+void Drone::videoRecordingStart(int camera_id)
+{
+    mavlink_message_t out_msg;
+    mavlink_msg_command_long_pack(GCS_SYSID, MAV_COMP_ID_ALL, &out_msg, sysid, camera_id,
+                                  MAV_CMD_VIDEO_START_CAPTURE, 0, 0, 1, 0, 0, 0, 0, 0);
+    log_info("MAV_CMD_VIDEO_START_CAPTURE sent");
+    sendCameraMsg(out_msg);
+}
+
+void Drone::videoRecordingStop(int camera_id)
+{
+    mavlink_message_t out_msg;
+    mavlink_msg_command_long_pack(GCS_SYSID, MAV_COMP_ID_ALL, &out_msg, sysid, camera_id,
+                                  MAV_CMD_VIDEO_STOP_CAPTURE, 0, 0, 0, 0, 0, 0, 0, 0);
+    log_info("MAV_CMD_VIDEO_STOP_CAPTURE sent");
+    sendCameraMsg(out_msg);
+}
+
 void Drone::handleHeartbeatCB(mavlink_message_t &msg)
 {
     if (msg.sysid == sysid) {
@@ -244,6 +266,22 @@ void Drone::handleAckCB(mavlink_message_t &msg)
     }
 }
 
+void Drone::handleCameraCaptureStatus(mavlink_message_t &msg)
+{
+    mavlink_camera_capture_status_t ccs;
+    mavlink_msg_camera_capture_status_decode(&msg, &ccs);
+
+    log_info("Camera Capture Status received: image_status=%d, video_status=%d", ccs.image_status, ccs.video_status);
+}
+
+void Drone::handleCameraImageCaptured(mavlink_message_t &msg)
+{
+    mavlink_camera_image_captured_t cic;
+    mavlink_msg_camera_image_captured_decode(&msg, &cic);
+
+    log_info("Camera Image Captured received: camera_id=%d", cic.camera_id);
+}
+
 void Drone::handleMavlinkMessageCB(mavlink_message_t &msg)
 {
     if (msg.compid < MAV_COMP_ID_CAMERA || msg.compid > MAV_COMP_ID_CAMERA6) {
@@ -262,6 +300,12 @@ void Drone::handleMavlinkMessageCB(mavlink_message_t &msg)
         break;
     case MAVLINK_MSG_ID_COMMAND_ACK:
         handleAckCB(msg);
+        break;
+    case MAVLINK_MSG_ID_CAMERA_CAPTURE_STATUS:
+        handleCameraCaptureStatus(msg);
+        break;
+    case MAVLINK_MSG_ID_CAMERA_IMAGE_CAPTURED:
+        handleCameraImageCaptured(msg);
         break;
     default:
         log_info("%d  message is not handled.", msg.msgid);
@@ -320,7 +364,7 @@ int main(int argc, char *argv[])
     }
 
     do {
-        log_info("\nSelect an action\n 1.Set Mode\n 2.Get Mode\n 3.Image Capture\n 4.Exit");
+        log_info("\nSelect an action\n 1.Set Mode\n 2.Get Mode\n 3.Image Capture\n 4.Video Recording Start\n 5.Video Recording Stop\n 6.Exit");
         int option;
         cin >> option;
         switch (option) {
@@ -365,12 +409,18 @@ int main(int argc, char *argv[])
             break;
         }
         case 4:
+            ctx->videoRecordingStart(camera_id);
+            break;
+        case 5:
+            ctx->videoRecordingStop(camera_id);
+            break;
+        case 6:
             log_info("Exiting application");
             break;
         default:
             log_info("Invalid Selection");
         }
-        if (option == 4)
+        if (option == 6)
             exit(EXIT_FAILURE);
     } while (1);
 

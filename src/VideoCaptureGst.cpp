@@ -354,7 +354,7 @@ std::string VideoCaptureGst::getGstV4l2PipelineName()
         std::stringstream ss;
         std::time_t t = std::time(nullptr);
         std::tm tm = *std::localtime(&t);
-        ss << "vid_" << std::put_time(&tm, "%y%m%d_%H%M%S");
+        ss << std::put_time(&tm, "%y%m%d_%H%M%S");
         std::string res = std::regex_replace(mPipelineString, std::regex("\\$FileName"), ss.str());
         return res;
     }
@@ -453,7 +453,7 @@ int VideoCaptureGst::createV4l2Pipeline()
         log_error("Pipeline String error");
         return 1;
     }
-    log_debug("pipeline = %s", pipeline_str.c_str());
+    log_info("pipeline = %s", pipeline_str.c_str());
 
     mPipeline = gst_parse_launch(pipeline_str.c_str(), &error);
     if (!mPipeline) {

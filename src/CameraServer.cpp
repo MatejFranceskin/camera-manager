@@ -45,7 +45,6 @@ CameraServer::CameraServer(const ConfFile &conf)
     // Read video capture settings/destination
     VideoSettings vidSetting;
     bool isVidCapSetting = readVidCapSettings(conf, vidSetting);
-    std::string vidPath = readVidCapLocation(conf);
 
     // Read blacklisted camera devices
     std::set<std::string> blackList = readBlacklistDevices(conf);
@@ -100,9 +99,6 @@ CameraServer::CameraServer(const ConfFile &conf)
 
         if (isVidCapSetting)
             comp->setVideoCaptureSettings(vidSetting);
-
-        if (!vidPath.empty())
-            comp->setVideoCaptureLocation(vidPath);
 
 // add to mavlink server
 #ifdef ENABLE_MAVLINK
@@ -317,6 +313,7 @@ bool CameraServer::readVidCapSettings(const ConfFile &conf, VideoSettings &vidSe
     vidSetting.encoder = static_cast<CameraParameters::VIDEO_CODING_FORMAT>(opt.encoder);
     vidSetting.fileFormat = static_cast<CameraParameters::VIDEO_FILE_FORMAT>(opt.format);
     vidSetting.pipeline = {};
+    vidSetting.vidPath = readVidCapLocation(conf);
 
     log_info("Video Capture Width=%d Height=%d framerate=%d, bitrate=%dkbps, encoder=%d, format=%d",
              vidSetting.width, vidSetting.height, vidSetting.frameRate, vidSetting.bitRate,
