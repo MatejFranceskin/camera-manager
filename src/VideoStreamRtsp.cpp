@@ -20,6 +20,12 @@
 
 #include "VideoStreamRtsp.h"
 
+#include <net/if.h>
+#include <netdb.h>
+#include <ifaddrs.h>
+#include <sstream>
+#include <iostream>
+
 #define DEFAULT_HOST "127.0.0.1"
 #define DEFAULT_SERVICE_PORT 8554
 
@@ -29,7 +35,6 @@ uint32_t VideoStreamRtsp::refCnt = 0;
 
 static std::string getGstVideoConvertor()
 {
-
     std::string convertor;
 
     convertor = "videoconvert";
@@ -155,6 +160,39 @@ static std::map<std::string, std::string> parseUrlQuery(const char *query)
     addParam(map, query_str.substr(i, j - i));
 
     return map;
+}
+
+static std::vector<std::string> scan_ifaces()
+{
+    std::vector<std::string> ifaces;
+    struct ifaddrs *ifaddr, *ifa;
+    char host[NI_MAXHOST];
+    if (getifaddrs(&ifaddr) == -1) {
+        perror("getifaddrs");
+        return ifaces;
+    }
+    int n;
+    //-- Walk through linked list, maintaining head pointer so we can free list later
+    for (ifa = ifaddr, n = 0; ifa != nullptr; ifa = ifa->ifa_next, n++) {
+        if (ifa->ifa_addr == nullptr)
+            continue;
+        if(ifa->ifa_addr->sa_family != AF_INET)
+            continue;
+        int s = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), host, NI_MAXHOST,  nullptr, 0, NI_NUMERICHOST);
+        if (s != 0) {
+            std::cerr << "getnameinfo() failed: " << gai_strerror(s);
+            continue;
+        }
+        bool connected = ifa->ifa_flags & IFF_UP;
+        bool loopback  = ifa->ifa_flags & IFF_LOOPBACK;
+        if(connected && !loopback){
+            ifaces.push_back(std::string(host));
+        }
+        printf("%s address: <%s> (%s) %s\n", ifa->ifa_name, host, connected ? "Connected" : "Disconnected", loopback ? "Loopback" : "Normal");
+   }
+   freeifaddrs(ifaddr);
+
+   return ifaces;
 }
 
 VideoStreamRtsp::VideoStreamRtsp(std::shared_ptr<CameraDevice> camDev)
@@ -619,4 +657,18 @@ void VideoStreamRtsp::attachRtspServer()
         /* Periodically remove timed out sessions*/
         g_timeout_add_seconds(2, (GSourceFunc)timeout, mServer);
     }
+}
+
+std::vector<std::string> VideoStreamRtsp::getURIs()
+{
+    std::vector<std::string> uris;
+    auto ifaces = scan_ifaces();
+
+    for (auto i : ifaces) {
+        std::ostringstream oss;
+        oss << "rtsp://" << i << ":" << DEFAULT_SERVICE_PORT << "/video0";
+        uris.push_back(oss.str());
+    }
+
+    return uris;
 }

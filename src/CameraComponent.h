@@ -73,6 +73,7 @@ public:
     int stopVideoStream();
     uint8_t getVideoStreamStatus() const;
     int resetCameraSettings(void);
+    std::vector<std::string> getStreamUris();
 
 private:
     std::string mCamDevName;               /* Camera device name */

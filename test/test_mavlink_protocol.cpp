@@ -52,6 +52,7 @@ public:
     bool setMode(int camera_id, int mode);
     int getMode(int camera_id);
     void imageCapture(int camera_id, int count, int interval);
+    void requestStreamInformation(int camera_id);
     void videoRecordingStart(int camera_id);
     void videoRecordingStop(int camera_id);
     std::vector<int> getCameraIdList() const;
@@ -73,6 +74,7 @@ private:
     struct buffer buf;
     bool sendCameraMsg(mavlink_message_t &msg);
     void handleCameraInformationCB(mavlink_message_t &msg);
+    void handleVideoStreamInformationCB(mavlink_message_t &msg);
     void handleCameraSettingsCB(mavlink_message_t &msg);
     void handleHeartbeatCB(mavlink_message_t &msg);
     void handleAckCB(mavlink_message_t &msg);
@@ -195,6 +197,15 @@ void Drone::imageCapture(int camera_id, int count, int interval)
     sendCameraMsg(out_msg);
 }
 
+void Drone::requestStreamInformation(int camera_id)
+{
+    mavlink_message_t out_msg;
+    mavlink_msg_command_long_pack(GCS_SYSID, MAV_COMP_ID_ALL, &out_msg, sysid, camera_id,
+                                    MAV_CMD_REQUEST_VIDEO_STREAM_INFORMATION, 0, 0, 0, 0, 0, 0, 0, 0);
+    log_info("MAV_CMD_REQUEST_VIDEO_STREAM_INFORMATION sent");
+    sendCameraMsg(out_msg);
+}
+
 void Drone::videoRecordingStart(int camera_id)
 {
     mavlink_message_t out_msg;
@@ -241,11 +252,59 @@ void Drone::handleCameraInformationCB(mavlink_message_t &msg)
     s.id = msg.compid;
     s.name = std::string((char *)info.model_name);
     streams.push_back(s);
+
+    log_info("Got MAVLINK_MSG_ID_CAMERA_INFORMATION\n" \
+             "Time Boot:     %dms\n" \
+             "Vendor:        %s\n" \
+             "Model:         %s\n" \
+             "Firmware:      %X\n" \
+             "Focal length:  %fmm\n" \
+             "sensor_size_h: %fmm\n" \
+             "sensor_size_v: %fmm\n" \
+             "resolution_h:  %dpix\n" \
+             "resolution_v:  %dpix\n" \
+             "camera URI:    %s",
+             info.time_boot_ms,
+             info.vendor_name,
+             info.model_name,
+             info.firmware_version,
+             info.focal_length,
+             info.sensor_size_h,
+             info.sensor_size_v,
+             info.resolution_h,
+             info.resolution_v,
+             info.cam_definition_uri
+    );
+    log_info("Flags:");
+    if (info.flags & CAMERA_CAP_FLAGS_CAPTURE_VIDEO)
+        log_info("CAPTURE_VIDEO");
+    if (info.flags & CAMERA_CAP_FLAGS_CAPTURE_IMAGE)
+        log_info("CAPTURE_IMAGE");
+    if (info.flags & CAMERA_CAP_FLAGS_HAS_MODES)
+        log_info("HAS_MODES");
+    if (info.flags & CAMERA_CAP_FLAGS_CAN_CAPTURE_IMAGE_IN_VIDEO_MODE)
+        log_info("CAN_CAPTURE_IMAGE_IN_VIDEO_MODE");
+    if (info.flags & CAMERA_CAP_FLAGS_CAN_CAPTURE_VIDEO_IN_IMAGE_MODE)
+        log_info("CAN_CAPTURE_VIDEO_IN_IMAGE_MODE");
+    if (info.flags & CAMERA_CAP_FLAGS_HAS_IMAGE_SURVEY_MODE)
+        log_info("HAS_IMAGE_SURVEY_MODE");
+    if (info.flags & CAMERA_CAP_FLAGS_HAS_BASIC_ZOOM)
+        log_info("HAS_BASIC_ZOOM");
+    if (info.flags & CAMERA_CAP_FLAGS_HAS_BASIC_FOCUS)
+        log_info("HAS_BASIC_FOCUS");
+    if (info.flags & CAMERA_CAP_FLAGS_HAS_VIDEO_STREAM)
+        log_info("HAS_VIDEO_STREAM");
+}
+
+void Drone::handleVideoStreamInformationCB(mavlink_message_t &msg)
+{
+    mavlink_video_stream_information_t info;
+    mavlink_msg_video_stream_information_decode(&msg, &info);
+    log_info("Video Stream URI: %s", info.uri);
 }
 
 void Drone::handleCameraSettingsCB(mavlink_message_t &msg)
 {
-    log_info("Got MAVLINK_MSG_ID_CAMERA_SETTINGS");
     mavlink_camera_settings_t settings;
     mavlink_msg_camera_settings_decode(&msg, &settings);
 
@@ -254,6 +313,17 @@ void Drone::handleCameraSettingsCB(mavlink_message_t &msg)
             i.mode = (Mode)settings.mode_id;
         }
     }
+
+    log_info("Got MAVLINK_MSG_ID_CAMERA_SETTINGS\n" \
+             "Time Boot:   %dms\n" \
+             "Mode ID:     %d\n" \
+             "Zoom level:  %f\n" \
+             "Focus level: %f\n",
+             settings.time_boot_ms,
+             settings.mode_id,
+             settings.zoomLevel,
+             settings.focusLevel
+    );
 }
 
 void Drone::handleAckCB(mavlink_message_t &msg)
@@ -261,7 +331,7 @@ void Drone::handleAckCB(mavlink_message_t &msg)
     mavlink_command_ack_t ack;
     mavlink_msg_command_ack_decode(&msg, &ack);
     if (ack.command == MAV_CMD_IMAGE_START_CAPTURE) {
-        log_info("Acknowledgement for MAV_CMD_IMAGE_START_CAPTURE recieved");
+        log_info("Acknowledgement for MAV_CMD_IMAGE_START_CAPTURE received");
         return;
     }
 }
@@ -306,6 +376,9 @@ void Drone::handleMavlinkMessageCB(mavlink_message_t &msg)
         break;
     case MAVLINK_MSG_ID_CAMERA_IMAGE_CAPTURED:
         handleCameraImageCaptured(msg);
+        break;
+    case MAVLINK_MSG_ID_VIDEO_STREAM_INFORMATION:
+        handleVideoStreamInformationCB(msg);
         break;
     default:
         log_info("%d  message is not handled.", msg.msgid);
@@ -364,7 +437,7 @@ int main(int argc, char *argv[])
     }
 
     do {
-        log_info("\nSelect an action\n 1.Set Mode\n 2.Get Mode\n 3.Image Capture\n 4.Video Recording Start\n 5.Video Recording Stop\n 6.Exit");
+        log_info("\nSelect an action\n 1.Set Mode\n 2.Get Mode\n 3.Image Capture\n 4.Request Video Stream Information\n 5.Video Recording Start\n 6.Video Recording Stop\n 7.Exit");
         int option;
         cin >> option;
         switch (option) {
@@ -409,18 +482,21 @@ int main(int argc, char *argv[])
             break;
         }
         case 4:
-            ctx->videoRecordingStart(camera_id);
+            ctx->requestStreamInformation(camera_id);
             break;
         case 5:
-            ctx->videoRecordingStop(camera_id);
+            ctx->videoRecordingStart(camera_id);
             break;
         case 6:
+            ctx->videoRecordingStop(camera_id);
+            break;
+        case 7:
             log_info("Exiting application");
             break;
         default:
             log_info("Invalid Selection");
         }
-        if (option == 6)
+        if (option == 7)
             exit(EXIT_FAILURE);
     } while (1);
 

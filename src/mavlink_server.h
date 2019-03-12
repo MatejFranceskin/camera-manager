@@ -17,6 +17,7 @@
  */
 #pragma once
 
+#include <chrono>
 #include <map>
 #include <mavlink.h>
 #include <memory>
@@ -51,6 +52,13 @@ private:
     int _comp_id;
     std::map<int, CameraComponent *> compIdToObj;
 
+    std::chrono::time_point<std::chrono::steady_clock> _boot_time;
+    uint32_t _get_time_boot_ms()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _boot_time).count();
+    }
+
+
     void _message_received(const struct sockaddr_in &sockaddr, const struct buffer &buf);
     void _handle_mavlink_message(const struct sockaddr_in &addr, mavlink_message_t *msg);
     void _handle_request_camera_information(const struct sockaddr_in &addr,
@@ -68,18 +76,16 @@ private:
     void _image_captured_cb(image_callback_t cb_data, int result, int seq_num);
     void _handle_request_camera_capture_status(const struct sockaddr_in &addr,
                                                mavlink_command_long_t &cmd);
-#if 0
-    void _handle_camera_video_stream_request(const struct sockaddr_in &addr, int command,
-                                             unsigned int camera_id, unsigned int action);
-    void _handle_camera_set_video_stream_settings(const struct sockaddr_in &addr,
-                                                  mavlink_message_t *msg);
-#endif
+    void _handle_camera_video_stream_request(const struct sockaddr_in &addr, mavlink_command_long_t &cmd);
+    //void _handle_camera_set_video_stream_settings(const struct sockaddr_in &addr,
+    //                                              mavlink_message_t *msg);
     void _handle_param_ext_request_read(const struct sockaddr_in &addr, mavlink_message_t *msg);
     void _handle_param_ext_request_list(const struct sockaddr_in &addr, mavlink_message_t *msg);
     void _handle_param_ext_set(const struct sockaddr_in &addr, mavlink_message_t *msg);
     void _handle_reset_camera_settings(const struct sockaddr_in &addr, mavlink_command_long_t &cmd);
     void _handle_heartbeat(const struct sockaddr_in &addr, mavlink_message_t *msg);
     bool _send_camera_capture_status(int compid, const struct sockaddr_in &addr);
+    bool _send_camera_video_stream_information(int compid, const struct sockaddr_in &addr);
     bool _send_mavlink_message(const struct sockaddr_in *addr, mavlink_message_t &msg);
     void _send_ack(const struct sockaddr_in &addr, int cmd, int comp_id, bool success);
 #if 0

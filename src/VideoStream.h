@@ -17,6 +17,9 @@
  */
 #pragma once
 
+#include <vector>
+#include <string>
+
 class VideoStream {
 public:
     VideoStream() {}
@@ -41,4 +44,5 @@ public:
     virtual int getPort() = 0;
     virtual int setTextOverlay(std::string text, int timeSec) { return -1; };
     virtual std::string getTextOverlay() { return {}; };
+    virtual std::vector<std::string> getURIs() { return {}; };
 };

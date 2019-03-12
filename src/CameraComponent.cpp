@@ -400,6 +400,15 @@ int CameraComponent::setVideoFrameFormat(uint32_t param_value)
     return 0;
 }
 
+std::vector<std::string> CameraComponent::getStreamUris()
+{
+    if (mVidStream) {
+        return mVidStream->getURIs();
+    } else {
+        return {};
+    }
+}
+
 int CameraComponent::startVideoStream(const bool isUdp)
 {
     int ret = 0;

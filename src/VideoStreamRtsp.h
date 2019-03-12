@@ -53,6 +53,7 @@ public:
     std::string getGstPipeline(std::map<std::string, std::string> &params);
     GstBuffer *readFrame();
     std::shared_ptr<CameraDevice> getCameraDevice() { return mCamDev;  };
+    virtual std::vector<std::string> getURIs();
 
 private:
     GstRTSPServer *createRtspServer();
